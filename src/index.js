@@ -37,7 +37,7 @@ server.post("/participants", (req, res) => {
       return;
     }
   
-    const isNamedUsed = db.collection("participants").find((participant) => db.collection("participants").name === name);
+    const isNamedUsed = db.collection("participants").find((participant) => participant.name === name);
   
     if (isNamedUsed) {
       res.status(409).send({ message: "Esse nome já está sendo utilizado!" });
@@ -57,6 +57,27 @@ server.post("/participants", (req, res) => {
         time: `${dayjs().format('HH:MM:SS') }`
     });
   
+    setInterval(async () => {
+        try {
+            const check = await db.collection("participants").find({name: `${name}`});
+            const time = Date.now();
+            if(check.lastStatus - time < 10){
+                db.collection("participants").remove({name: `${name}`});
+                db.collection("messages").insertOne({
+                    from: `${name}`, 
+                    to: 'Todos', 
+                    text: 'saiu da sala...', 
+                    type: 'status', 
+                    time: `${dayjs().format('HH:MM:SS') }`
+                });
+            }
+        }
+        catch (error) {
+            console.error(err);
+            res.sendStatus(500);
+        }
+    }, 15000);
+
     res.status(201);
 });
 
@@ -108,8 +129,24 @@ server.get("/messages/:user?limit", async (req, res) => {
     }
 });
 
-server.post("/status/:user", (req, res) => {
-
+server.post("/status/:user", async (req, res) => {
+    const user = req.params.user;
+    
+    try {
+        const whichUser = await db.collection("participants").find((participant) => participant.name === user);
+        if (!whichUser) {
+            res.status(404);
+            return;
+          }
+        else{
+            whichUser.lastStatus = Date.now();
+            res.sendStatus(200);
+        }
+    } 
+    catch (error) {
+        console.error(err);
+        res.sendStatus(500);
+    }
 });
 
 server.listen(5000, () => console.log("listening on port 5000"));
