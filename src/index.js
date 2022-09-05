@@ -70,7 +70,6 @@ server.post("/messages/:user", (req, res) => {
 
     const { to, text, type } = req.body;
     const newMessage = { "to": to, "text": text, "type": type };
-
     const validation = messageSchema.validate(newMessage);
 
     if (!validation || !whichUser) {
@@ -78,14 +77,38 @@ server.post("/messages/:user", (req, res) => {
       return;
     }
 
+    db.collection("messages").insertOne({
+        from: `${user}`, 
+        to: to, 
+        text: text, 
+        type: type, 
+        time: `${dayjs().format('HH:MM:SS') }`
+    });
+
     res.status(201);
 });
   
-server.get("/messages", (req, res) => {
-
+server.get("/messages/:user?limit", async (req, res) => {
+    const user = req.params.user;
+    const limit = parseInt(req.query.limit);
+    
+    try {
+        const displayMessages = await db.collection('messages').find({ from : `${user}`}, { to : `${user}`}, { to : "Todos"});
+        if(!limit) {
+            res.send(displayMessages);
+        }
+        else{
+            const valorLimite= displayMessages.slice(limit);
+            res.send(valorLimite);
+        }
+    } 
+    catch (error) {
+        console.error(err);
+        res.sendStatus(500);
+    }
 });
 
-server.post("/status", (req, res) => {
+server.post("/status/:user", (req, res) => {
 
 });
 
