@@ -1,7 +1,10 @@
 import express from "express";
 import cors from "cors";
 import { MongoClient } from "mongodb";
+import joi from 'joi';
+import dotenv from "dotenv";
 
+dotenv.config();
 const server = express();
 server.use(cors());
 server.use(express.json());
@@ -9,39 +12,43 @@ server.use(express.json());
 const participants = [];
 const messages = [];
 
-const mongoClient = new MongoClient("mongodb://localhost:27017");
+const particioantSchema = joi.object({
+    name: joi.string().required()
+  });
+
+const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
 
 mongoClient.connect().then(() => {
 	db = mongoClient.db("meu_lindo_projeto");
 });
 
-server.get("/participants", (req, res) => {
-
-});
-
 server.post("/participants", (req, res) => {
     const { name } = req.body;
 
-    if (!name) {
-      res.status(400).send({ message: "Nome do usúario é obrigatórios!" });
+    const validation = particioantSchema.validate(name);
+
+    if (!validation) {
+      res.status(422).send({ message: "Nome do usúario é obrigatório!" });
       return;
     }
   
     const isNamedUsed = participants.find((participant) => participant.name === name);
   
-    // Se tiver alguma coisa nessa variável, retorna o erro.
     if (isNamedUsed) {
-      res.status(400).send({ message: "Participante já existente!" });
+      res.status(409).send({ message: "Participante já existente!" });
       return;
     }
   
     participants.push({ name });
   
-    res.status(201).send({ message: "OK" });
-
+    res.status(201);
 });
 
+server.get("/participants", (req, res) => {
+    res.send(participants);
+  });
+  
 server.get("/messages", (req, res) => {
 
 });
